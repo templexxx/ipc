@@ -54,15 +54,16 @@ func TestSameDataSingleProcess(t *testing.T) {
 	}
 }
 
-// TODO make it choice.
-// TODO clean testproc after testing.
-// TODO use TestMain function.
-func init() {
+func TestMain(m *testing.M) {
+
 	cmd := exec.Command("go", "build", "cmd/testproc/testproc.go")
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
+	m.Run()
+	os.Remove("testproc")
+
 }
 
 func TestSameDataMultiProcesses(t *testing.T) {
