@@ -2,8 +2,8 @@ package ipc
 
 import (
 	"bytes"
-	"fmt"
 	"log"
+	"math"
 	"os"
 	"os/exec"
 	"syscall"
@@ -95,7 +95,7 @@ func TestSHM_Detach(t *testing.T) {
 	key := 2
 	size := 1 << 30
 
-	startMem := getSysMem()
+	startMem := getFreeMem()
 	s, err := SHMGet(key, size)
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +104,15 @@ func TestSHM_Detach(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	afterAttachMem := getSysMem()
+	buf := make([]byte, 1<<20)
+	for i := range buf {
+		buf[i] = uint8(i)
+	}
+	for i := 0; i < size/len(buf); i++ {
+		copy(s.Bytes[i*len(buf):(i+1)*len(buf)], buf)
+	}
+
+	afterAttachMem := getFreeMem()
 
 	for i := 0; i < 8; i++ {
 		cmd := exec.Command("./testproc", "-cmd", "detach", "-key", "2", "-size", "1073741824")
@@ -114,21 +122,52 @@ func TestSHM_Detach(t *testing.T) {
 			log.Fatal(err)
 		}
 	}
-	afterMultAttachDeatch := getSysMem()
-	fmt.Println(startMem, afterAttachMem, afterMultAttachDeatch)
+	afterMultAttachDeatch := getFreeMem()
+	if !bytes.Equal(buf, s.Bytes[:len(buf)]) {
+		t.Fatal("data mismatch")
+	}
+
+	if startMem-afterAttachMem < 900*(1<<20) {
+		t.Fatal("memory usage not match after attach", startMem, afterAttachMem)
+	}
+	if startMem-afterMultAttachDeatch < 900*(1<<20) {
+		t.Fatal("memory usage should bigger: still has attach shm")
+	}
+
 	s.Detach()
 
-	afterAllDeatch := getSysMem()
-	fmt.Println(afterAllDeatch)
+	afterAllDeatch := getFreeMem()
+	if math.Abs(float64(startMem)-float64(afterAllDeatch)) > 256*(1<<20) {
+		t.Fatal("memory usage should be almost as same as the beginning", startMem, afterAllDeatch, math.Abs(float64(startMem-afterAllDeatch)), 256*(1<<20))
+	}
 }
 
-func getSysMem() uint64 {
+func TestSHM_ProcessesExit(t *testing.T) {
+	startMem := getFreeMem()
+
+	for i := 0; i < 8; i++ {
+		cmd := exec.Command("./testproc", "-cmd", "exit", "-key", "2", "-size", "1073741824")
+		cmd.Stdout = os.Stdout
+		err := cmd.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	exitMem := getFreeMem()
+	if math.Abs(float64(startMem)-float64(exitMem)) > 256*(1<<20) {
+		t.Fatal("memory usage should be almost as same as the beginning")
+	}
+
+}
+
+func getFreeMem() uint64 {
 
 	in := &syscall.Sysinfo_t{}
 	err := syscall.Sysinfo(in)
 	if err != nil {
 		return 0
 	}
-	return in.Totalram * uint64(in.Unit)
+	return in.Freeram * uint64(in.Unit)
 
 }
