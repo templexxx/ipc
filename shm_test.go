@@ -6,8 +6,10 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func TestSameDataSingleProcess(t *testing.T) {
@@ -159,7 +161,35 @@ func TestSHM_ProcessesExit(t *testing.T) {
 	if math.Abs(float64(startMem)-float64(exitMem)) > 256*(1<<20) {
 		t.Fatal("memory usage should be almost as same as the beginning")
 	}
+}
 
+func TestSHM_Kill(t *testing.T) {
+	startMem := getFreeMem()
+
+	m := new(sync.Map)
+
+	for i := 0; i < 8; i++ {
+		go func(j int) {
+			cmd := exec.Command("./testproc", "-cmd", "sleep", "-key", "2", "-size", "1073741824")
+			cmd.Stdout = os.Stdout
+			err := cmd.Run()
+			if err != nil {
+				log.Fatal(err)
+			}
+			m.Store(j, cmd.ProcessState.Pid())
+		}(i)
+	}
+	time.Sleep(time.Second)
+
+	m.Range(func(key, value interface{}) bool {
+		syscall.Kill(value.(int), syscall.SIGKILL)
+		return true
+	})
+
+	exitMem := getFreeMem()
+	if math.Abs(float64(startMem)-float64(exitMem)) > 256*(1<<20) {
+		t.Fatal("memory usage should be almost as same as the beginning")
+	}
 }
 
 func getFreeMem() uint64 {
