@@ -11,8 +11,8 @@ import (
 )
 
 var cmd = flag.String("cmd", "", "test cmd")
-var key = flag.Int("key", 0, "shm key")
-var size = flag.Int("size", 0, "shm size")
+var key = flag.Uint("key", 0, "shm key")
+var size = flag.Uint("size", 0, "shm size")
 
 func init() {
 	flag.Usage = func() {
@@ -50,7 +50,7 @@ func main() {
 	}
 }
 
-func testGetSame(key, size int) error {
+func testGetSame(key, size uint) error {
 	shm, err := ipc.SHMGet(key, size)
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func testGetSame(key, size int) error {
 	return nil
 }
 
-func testDetach(key, size int) error {
+func testDetach(key, size uint) error {
 	shm, err := ipc.SHMGet(key, size)
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func testDetach(key, size int) error {
 	return shm.Detach()
 }
 
-func testSleep(key, size int) error {
+func testSleep(key, size uint) error {
 	shm, err := ipc.SHMGet(key, size)
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func testSleep(key, size int) error {
 	return nil
 }
 
-func testExit(key, size int) error {
+func testExit(key, size uint) error {
 	shm, err := ipc.SHMGet(key, size)
 	if err != nil {
 		return err

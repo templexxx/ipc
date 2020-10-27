@@ -9,9 +9,9 @@ import (
 )
 
 type SHM struct {
-	Key   int
+	Key   uint
 	ID    uintptr
-	Size  int
+	Size  uint
 	Data  uintptr
 	Bytes []byte // It's easy to use a bytes slice in Go because lacking of pointer ops.
 }
@@ -24,15 +24,15 @@ const (
 )
 
 // SHMGet gets a shared memory with specified key and size.
-func SHMGet(id, size int) (*SHM, error) {
-	key, errf := Ftok("/dev/null", uint(id))
+func SHMGet(id, size uint) (*SHM, error) {
+	key, errf := Ftok("/dev/null", id)
 	if errf != nil {
 		return nil, errf
 	}
 	shmid, _, err := syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), 0)
 	if err == 0 && int(shmid) != -1 {
 		return &SHM{
-			Key:  id,
+			Key:  key,
 			ID:   shmid,
 			Size: size,
 		}, nil
@@ -47,7 +47,7 @@ func SHMGet(id, size int) (*SHM, error) {
 	}
 
 	return &SHM{
-		Key:  id,
+		Key:  key,
 		ID:   shmid,
 		Size: size,
 	}, nil
@@ -63,8 +63,8 @@ func (s *SHM) Attach() error {
 
 	bh := reflect.SliceHeader{
 		Data: addr,
-		Len:  s.Size,
-		Cap:  s.Size,
+		Len:  int(s.Size),
+		Cap:  int(s.Size),
 	}
 	s.Data = addr
 	s.Bytes = *(*[]byte)(unsafe.Pointer(&bh))

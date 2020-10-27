@@ -71,7 +71,7 @@ func TestMain(m *testing.M) {
 func TestSameDataMultiProcesses(t *testing.T) {
 	key := 1
 	size := 8
-	s, err := SHMGet(key, size)
+	s, err := SHMGet(uint(key), uint(size))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestSHM_Detach(t *testing.T) {
 	size := 1 << 30
 
 	startMem := getFreeMem()
-	s, err := SHMGet(key, size)
+	s, err := SHMGet(uint(key), uint(size))
 	if err != nil {
 		t.Fatal(err)
 	}
