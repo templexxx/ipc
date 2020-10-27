@@ -22,6 +22,7 @@ func TestSameDataSingleProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Detach()
+	defer s.Remove()
 
 	bs := s.Bytes
 	for i := 0; i < 8; i++ {
@@ -37,6 +38,7 @@ func TestSameDataSingleProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s2.Detach()
+	defer s2.Remove()
 
 	if s.ID != s2.ID {
 		t.Fatal("shm id mismatch")
@@ -69,7 +71,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestSameDataMultiProcesses(t *testing.T) {
-	key := 1
+	key := 2
 	size := 8
 	s, err := SHMGet(uint(key), uint(size))
 	if err != nil {
@@ -80,13 +82,14 @@ func TestSameDataMultiProcesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Detach()
+	defer s.Remove()
 
 	bs := s.Bytes
 	for i := 0; i < size; i++ {
 		bs[i] = uint8(i)
 	}
 
-	cmd := exec.Command("./testproc", "-cmd", "get_same", "-key", "1", "-size", "8")
+	cmd := exec.Command("./testproc", "-cmd", "get_same", "-key", "2", "-size", "8")
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
@@ -95,7 +98,7 @@ func TestSameDataMultiProcesses(t *testing.T) {
 }
 
 func TestSHM_Detach(t *testing.T) {
-	key := 2
+	key := 3
 	size := 1 << 30
 
 	startMem := getFreeMem()
@@ -118,7 +121,7 @@ func TestSHM_Detach(t *testing.T) {
 	afterAttachMem := getFreeMem()
 
 	for i := 0; i < 8; i++ {
-		cmd := exec.Command("./testproc", "-cmd", "detach", "-key", "2", "-size", "1073741824")
+		cmd := exec.Command("./testproc", "-cmd", "detach", "-key", "3", "-size", "1073741824")
 		cmd.Stdout = os.Stdout
 		err = cmd.Run()
 		if err != nil {
@@ -153,7 +156,7 @@ func TestSHM_Kill(t *testing.T) {
 
 	for i := 0; i < 8; i++ {
 		go func(j int) {
-			cmd := exec.Command("./testproc", "-cmd", "sleep", "-key", "2", "-size", "1073741824")
+			cmd := exec.Command("./testproc", "-cmd", "sleep", "-key", "4", "-size", "1073741824")
 			cmd.Stdout = os.Stdout
 			err := cmd.Run()
 			if err != nil {
