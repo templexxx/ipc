@@ -66,6 +66,7 @@ func testGetSame(key, size uint) error {
 			return errors.New("value mismatch")
 		}
 	}
+	_ = shm.Remove()
 	return nil
 }
 

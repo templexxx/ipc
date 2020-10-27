@@ -77,6 +77,5 @@ func (s *SHM) Detach() error {
 		return err
 	}
 	s.Bytes = nil
-	_ = s.Remove()
 	return nil
 }
