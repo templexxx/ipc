@@ -137,25 +137,12 @@ func TestSHM_Detach(t *testing.T) {
 		t.Fatal("memory usage should bigger: still has attach shm")
 	}
 
-	s.Remove()
-}
-
-func TestSHM_ProcessesExit(t *testing.T) {
-	startMem := getFreeMem()
-
-	for i := 0; i < 8; i++ {
-		cmd := exec.Command("./testproc", "-cmd", "exit", "-key", "2", "-size", "1073741824")
-		cmd.Stdout = os.Stdout
-		err := cmd.Run()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	exitMem := getFreeMem()
-	if math.Abs(float64(startMem)-float64(exitMem)) > 256*(1<<20) {
+	_ = s.Remove()
+	afterRm := getFreeMem()
+	if math.Abs(float64(startMem)-float64(afterRm)) > 256*(1<<20) {
 		t.Fatal("memory usage should be almost as same as the beginning")
 	}
+
 }
 
 func TestSHM_Kill(t *testing.T) {

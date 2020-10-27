@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/templexxx/ipc"
 	"log"
-	"os"
 	"time"
 )
 
@@ -23,7 +22,6 @@ func init() {
 const (
 	cmdGetSame = "get_same"
 	cmdDetach  = "detach"
-	cmdExit    = "exit"
 	cmdSleep   = "sleep"
 )
 
@@ -41,12 +39,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case cmdExit:
-		err := testExit(*key, *size)
-		if err != nil {
-			log.Fatal(err)
-		}
-		os.Exit(0)
 	}
 }
 
@@ -99,12 +91,4 @@ func testSleep(key, size uint) error {
 
 	time.Sleep(30 * time.Second)
 	return nil
-}
-
-func testExit(key, size uint) error {
-	shm, err := ipc.SHMGet(key, size)
-	if err != nil {
-		return err
-	}
-	return shm.Attach()
 }
