@@ -29,16 +29,8 @@ func SHMGet(id, size uint) (*SHM, error) {
 	if errf != nil {
 		return nil, errf
 	}
-	shmid, _, err := syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), 0)
-	if err == 0 && int(shmid) != -1 {
-		return &SHM{
-			Key:  key,
-			ID:   shmid,
-			Size: size,
-		}, nil
-	}
 
-	shmid, _, err = syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), IPC_CREAT|0666)
+	shmid, _, err := syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), IPC_CREAT|0666)
 	if err != 0 {
 		return nil, err
 	}
@@ -69,8 +61,6 @@ func (s *SHM) Attach() error {
 	s.Data = addr
 	s.Bytes = *(*[]byte)(unsafe.Pointer(&bh))
 
-	_ = s.Remove()
-
 	return nil
 }
 
@@ -83,9 +73,10 @@ func (s *SHM) Remove() error {
 // Detach detaches shared memory.
 func (s *SHM) Detach() error {
 	_, _, err := syscall.Syscall(syscall.SYS_SHMDT, s.Data, 0, 0)
-	if err == 0 {
-		return nil
+	if err != 0 {
+		return err
 	}
 	s.Bytes = nil
-	return err
+	_ = s.Remove()
+	return nil
 }
