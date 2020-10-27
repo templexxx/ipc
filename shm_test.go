@@ -137,6 +137,7 @@ func TestSHM_Detach(t *testing.T) {
 		t.Fatal("memory usage should bigger: still has attach shm")
 	}
 
+	_ = s.Detach()
 	_ = s.Remove()
 	afterRm := getFreeMem()
 	if math.Abs(float64(startMem)-float64(afterRm)) > 256*(1<<20) {
