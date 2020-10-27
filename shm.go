@@ -24,15 +24,31 @@ const (
 )
 
 // SHMGet gets a shared memory with specified key and size.
-func SHMGet(key, size int) (*SHM, error) {
-	id, _, err := syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), IPC_CREAT|0600)
-	if int(id) == -1 {
+func SHMGet(id, size int) (*SHM, error) {
+	key, errf := Ftok("/dev/null", uint(id))
+	if errf != nil {
+		return nil, errf
+	}
+	shmid, _, err := syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), 0)
+	if err == 0 && int(shmid) != -1 {
+		return &SHM{
+			Key:  id,
+			ID:   shmid,
+			Size: size,
+		}, nil
+	}
+
+	shmid, _, err = syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), IPC_CREAT|0666)
+	if err != 0 {
+		return nil, err
+	}
+	if int(shmid) == -1 {
 		return nil, errors.New(fmt.Sprintf("shm get failed: %s", err))
 	}
 
 	return &SHM{
-		Key:  key,
-		ID:   id,
+		Key:  id,
+		ID:   shmid,
 		Size: size,
 	}, nil
 
