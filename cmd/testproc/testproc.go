@@ -1,0 +1,109 @@
+package main
+
+import (
+	"errors"
+	"flag"
+	"fmt"
+	"github.com/templexxx/ipc"
+	"log"
+	"os"
+	"time"
+)
+
+var cmd = flag.String("cmd", "", "test cmd")
+var key = flag.Int("key", 0, "shm key")
+var size = flag.Int("size", 0, "shm size")
+
+func init() {
+	flag.Usage = func() {
+		fmt.Printf("Usage")
+	}
+}
+
+const (
+	cmdGetSame = "get_same"
+	cmdDetach  = "detach"
+	cmdExit    = "exit"
+	cmdSleep   = "sleep"
+)
+
+func main() {
+	flag.Parse()
+
+	switch *cmd {
+	case cmdGetSame:
+		err := testGetSame(*key, *size)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case cmdDetach:
+		err := testDetach(*key, *size)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case cmdExit:
+		err := testExit(*key, *size)
+		if err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}
+}
+
+func testGetSame(key, size int) error {
+	shm, err := ipc.SHMGet(key, size)
+	if err != nil {
+		return err
+	}
+	err = shm.Attach()
+	if err != nil {
+		return err
+	}
+	defer shm.Detach()
+
+	for i, v := range shm.Bytes {
+		if v != uint8(i) {
+			return errors.New("value mismatch")
+		}
+	}
+	return nil
+}
+
+func testDetach(key, size int) error {
+	shm, err := ipc.SHMGet(key, size)
+	if err != nil {
+		return err
+	}
+	err = shm.Attach()
+	if err != nil {
+		return err
+	}
+	for i, v := range shm.Bytes[:1<<20] {
+		if v != uint8(i) {
+			return errors.New("value mismatch")
+		}
+	}
+	return shm.Detach()
+}
+
+func testSleep(key, size int) error {
+	shm, err := ipc.SHMGet(key, size)
+	if err != nil {
+		return err
+	}
+	err = shm.Attach()
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(30 * time.Second)
+	return nil
+}
+
+func testExit(key, size int) error {
+	shm, err := ipc.SHMGet(key, size)
+	if err != nil {
+		return err
+	}
+	return shm.Attach()
+}
