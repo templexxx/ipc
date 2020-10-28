@@ -233,7 +233,7 @@ func TestSHM_Kill(t *testing.T) {
 
 func getSHMStatus() (cnt int, allocated int, err error) {
 	cmd := exec.Command("ipcs", "-m", "-u")
-	buf := make([]byte, 4096)
+	buf := make([]byte, 0, 1024*1024)
 	out := bytes.NewBuffer(buf)
 	cmd.Stdout = out
 
