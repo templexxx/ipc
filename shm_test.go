@@ -243,7 +243,7 @@ func TestSHM_Kill(t *testing.T) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			m.Store(j, cmd.ProcessState.Pid())
+			m.Store(j, cmd.Process.Pid)
 		}(i)
 	}
 	time.Sleep(time.Second)
