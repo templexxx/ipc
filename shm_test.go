@@ -22,7 +22,7 @@ func isSHMClean(t *testing.T, start int) {
 	}
 
 	if cnt-start != 0 {
-		t.Fatal("shm leak")
+		t.Fatalf("shm leak: %d", cnt-start)
 	}
 }
 
