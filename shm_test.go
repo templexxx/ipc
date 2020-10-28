@@ -211,13 +211,24 @@ func TestSHM_Detach(t *testing.T) {
 }
 
 // Test Exit all processes, none of these processes will call detach or remove.
-// Expect: 0 leak.
+// Expect: 1 leak.
 func TestSHM_Exit(t *testing.T) {
 
 	startCnt, _, err := getSHMStatus()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		s, err := SHMGet(4, 1073741824)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.Detach()
+		s.Remove()
+
+		isSHMClean(t, startCnt)
+	}()
 
 	sleepSecs := 3
 
@@ -233,7 +244,7 @@ func TestSHM_Exit(t *testing.T) {
 	}
 	time.Sleep(time.Second * time.Duration(sleepSecs*2))
 
-	isSHMClean(t, startCnt)
+	isSHMLeakN(t, startCnt, 1)
 
 }
 
