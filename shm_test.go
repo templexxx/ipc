@@ -20,7 +20,7 @@ func isSHMClean(t *testing.T, start uint64) {
 func TestSameDataSingleProcess(t *testing.T) {
 	start := getShm()
 
-	s, err := SHMGet(1, 8)
+	s, err := SHMGet(1, 8192) // Using 8192 for avoiding get sys_info ignore too small size (because of the unit maybe KB?).
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,11 +32,11 @@ func TestSameDataSingleProcess(t *testing.T) {
 	defer s.Remove()
 
 	bs := s.Bytes
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 8192; i++ {
 		bs[i] = uint8(i)
 	}
 
-	s2, err := SHMGet(1, 8)
+	s2, err := SHMGet(1, 8192)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,8 +57,8 @@ func TestSameDataSingleProcess(t *testing.T) {
 	}
 
 	bs2 := s2.Bytes
-	for i := 0; i < 8; i++ {
-		bs2[i] = uint8(8 - i)
+	for i := 0; i < 8192; i++ {
+		bs2[i] = uint8(8192 - i)
 	}
 
 	if !bytes.Equal(s.Bytes, s2.Bytes) {
@@ -82,7 +82,7 @@ func TestSameDataMultiProcesses(t *testing.T) {
 	start := getShm()
 
 	key := 2
-	size := 8
+	size := 8192
 	s, err := SHMGet(uint(key), uint(size))
 	if err != nil {
 		t.Fatal(err)
@@ -100,7 +100,7 @@ func TestSameDataMultiProcesses(t *testing.T) {
 		bs[i] = uint8(i)
 	}
 
-	cmd := exec.Command("./testproc", "-cmd", "get_same", "-key", "2", "-size", "8")
+	cmd := exec.Command("./testproc", "-cmd", "get_same", "-key", "2", "-size", "8192")
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
