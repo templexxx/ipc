@@ -26,6 +26,18 @@ func isSHMClean(t *testing.T, start int) {
 	}
 }
 
+func isSHMLeakN(t *testing.T, start, n int) {
+
+	cnt, _, err := getSHMStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if cnt-start != n {
+		t.Fatalf("shm leak: exp: %d, but: %d", n, cnt-start)
+	}
+}
+
 func TestSameDataSingleProcess(t *testing.T) {
 	start, _, err := getSHMStatus()
 	if err != nil {
@@ -201,12 +213,22 @@ func TestSHM_Detach(t *testing.T) {
 }
 
 // Test kill all processes, none of these processes will call detach or remove.
-// Expect: not leak.
+// Expect: 1 leak.
 func TestSHM_Kill(t *testing.T) {
+
 	startCnt, _, err := getSHMStatus()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		s, err := SHMGet(4, 1073741824)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = s.Remove()
+		isSHMClean(t, startCnt)
+	}()
 
 	m := new(sync.Map)
 
@@ -228,7 +250,8 @@ func TestSHM_Kill(t *testing.T) {
 		return true
 	})
 
-	isSHMClean(t, startCnt)
+	isSHMLeakN(t, startCnt, 1)
+
 }
 
 func getSHMStatus() (cnt int, allocated int, err error) {
