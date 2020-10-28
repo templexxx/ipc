@@ -83,6 +83,7 @@ func (s *SHM) Remove() error {
 		return nil
 	}
 	_, _, err := syscall.Syscall(syscall.SYS_SHMCTL, s.ID, uintptr(IPC_RMID), 0)
+	s.ID = 0
 	return err
 }
 
