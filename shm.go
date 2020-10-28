@@ -67,6 +67,14 @@ func (s *SHM) Attach() error {
 var ErrRemoveOrder = errors.New("should detach before remove")
 
 // Remove removes the resource only after the last process detaches it.
+//
+// NOTE: The memory segment will only be destroyed when all processes that have attached
+//       to it have detached, which can happen explicitly (here via segment.Detach(ptr)),
+//       or implicitly when the process exits.
+//
+// NOTE: Memory is not overwritten / zeroed out when destroyed.  If you have sensitive data in
+//       this memory segment, you must overwrite it yourself before detaching.
+// (Comments copied from: https://github.com/ghetzel/shmtool)
 func (s *SHM) Remove() error {
 	if s.Data != 0 {
 		return ErrRemoveOrder

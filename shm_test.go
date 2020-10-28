@@ -46,7 +46,6 @@ func TestSameDataSingleProcess(t *testing.T) {
 	}
 	defer s2.Detach()
 	defer s2.Remove()
-
 	defer isSHMClean(t, start)
 
 	if s.ID != s2.ID {
@@ -82,7 +81,7 @@ func TestMain(m *testing.M) {
 func TestSameDataMultiProcesses(t *testing.T) {
 	start := getShm()
 
-	key := 1
+	key := 2
 	size := 8
 	s, err := SHMGet(uint(key), uint(size))
 	if err != nil {
@@ -101,7 +100,7 @@ func TestSameDataMultiProcesses(t *testing.T) {
 		bs[i] = uint8(i)
 	}
 
-	cmd := exec.Command("./testproc", "-cmd", "get_same", "-key", "1", "-size", "8")
+	cmd := exec.Command("./testproc", "-cmd", "get_same", "-key", "2", "-size", "8")
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
@@ -113,7 +112,7 @@ func TestSameDataMultiProcesses(t *testing.T) {
 // see the shm will leak or not.
 // Expect: not leak.
 func TestSHM_Detach(t *testing.T) {
-	key := 2
+	key := 3
 	size := 1 << 30
 
 	start := getShm()
@@ -136,7 +135,7 @@ func TestSHM_Detach(t *testing.T) {
 	afterAttachMem := getShm()
 
 	for i := 0; i < 8; i++ {
-		cmd := exec.Command("./testproc", "-cmd", "detach", "-key", "2", "-size", "1073741824")
+		cmd := exec.Command("./testproc", "-cmd", "detach", "-key", "3", "-size", "1073741824")
 		cmd.Stdout = os.Stdout
 		err = cmd.Run()
 		if err != nil {
@@ -160,11 +159,6 @@ func TestSHM_Detach(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	err = s.Detach()
-	if err != nil {
-		t.Fatal(err)
-	}
 	err = s.Remove()
 	if err != nil {
 		t.Fatal(err)
@@ -181,7 +175,7 @@ func TestSHM_Kill(t *testing.T) {
 
 	for i := 0; i < 8; i++ {
 		go func(j int) {
-			cmd := exec.Command("./testproc", "-cmd", "sleep", "-key", "2", "-size", "1073741824")
+			cmd := exec.Command("./testproc", "-cmd", "sleep", "-key", "4", "-size", "1073741824")
 			cmd.Stdout = os.Stdout
 			err := cmd.Run()
 			if err != nil {
