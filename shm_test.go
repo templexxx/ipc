@@ -248,6 +248,9 @@ func getSHMStatus() (cnt int, allocated int, err error) {
 		if strings.HasPrefix("segments allocated", string(line)) {
 			s := strings.TrimPrefix(string(line), "segments allocated ")
 			s = strings.TrimSpace(s)
+			if s == "" {
+				break // No segments.
+			}
 			cnt, err = strconv.Atoi(s)
 			if err != nil {
 				return
