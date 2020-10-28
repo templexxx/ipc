@@ -143,8 +143,8 @@ func TestSHM_Detach(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Detach()
 	defer s.Remove()
+	defer s.Detach()
 	buf := make([]byte, 1<<20)
 	for i := range buf {
 		buf[i] = uint8(i)
@@ -236,6 +236,10 @@ func getSHMStatus() (cnt int, allocated int, err error) {
 	buf := make([]byte, 0, 1024*1024)
 	out := bytes.NewBuffer(buf)
 	cmd.Stdout = out
+	err = cmd.Run()
+	if err != nil {
+		return 0, 0, err
+	}
 
 	r := bufio.NewReader(out)
 	for {
