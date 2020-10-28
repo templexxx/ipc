@@ -39,6 +39,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	case cmdSleep:
+		err := testSleep(*key, *size)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
