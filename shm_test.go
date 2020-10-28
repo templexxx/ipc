@@ -1,24 +1,37 @@
 package ipc
 
 import (
+	"bufio"
 	"bytes"
+	"io"
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
 )
 
-func isSHMClean(t *testing.T, start uint64) {
-	if getShm()-start != 0 {
+func isSHMClean(t *testing.T, start int) {
+
+	cnt, _, err := getSHMStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if cnt-start != 0 {
 		t.Fatal("shm leak")
 	}
 }
 
 func TestSameDataSingleProcess(t *testing.T) {
-	start := getShm()
+	start, _, err := getSHMStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	s, err := SHMGet(1, 8192) // Using 8192 for avoiding get sys_info ignore too small size (because of the unit maybe KB?).
 	if err != nil {
@@ -79,7 +92,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestSameDataMultiProcesses(t *testing.T) {
-	start := getShm()
+	start, _, err := getSHMStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	key := 2
 	size := 8192
@@ -115,7 +131,10 @@ func TestSHM_Detach(t *testing.T) {
 	key := 3
 	size := 1 << 30
 
-	start := getShm()
+	startCnt, startAlloc, err := getSHMStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
 	s, err := SHMGet(uint(key), uint(size))
 	if err != nil {
 		t.Fatal(err)
@@ -124,6 +143,8 @@ func TestSHM_Detach(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer s.Detach()
+	defer s.Remove()
 	buf := make([]byte, 1<<20)
 	for i := range buf {
 		buf[i] = uint8(i)
@@ -132,7 +153,18 @@ func TestSHM_Detach(t *testing.T) {
 		copy(s.Bytes[i*len(buf):(i+1)*len(buf)], buf)
 	}
 
-	afterAttachMem := getShm()
+	afterAttachCnt, afterAttachAlloc, err := getSHMStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if afterAttachCnt-startCnt != 1 {
+		t.Fatal("new shm cnt mismatch")
+	}
+
+	if afterAttachAlloc-startAlloc != size/(1<<12) {
+		t.Fatal("shm size mismatch")
+	}
 
 	for i := 0; i < 8; i++ {
 		cmd := exec.Command("./testproc", "-cmd", "detach", "-key", "3", "-size", "1073741824")
@@ -142,17 +174,19 @@ func TestSHM_Detach(t *testing.T) {
 			log.Fatal(err)
 		}
 	}
-	afterMultAttachDeatch := getShm()
+	afterDetachCnt, afterDetachAlloc, err := getSHMStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Equal(buf, s.Bytes[:len(buf)]) {
 		t.Fatal("data mismatch")
 	}
-
-	if afterAttachMem-start != 1<<30 {
-		t.Fatal("new shm size mismatch")
+	if afterDetachCnt-startCnt != 1 {
+		t.Fatal("new shm cnt mismatch")
 	}
 
-	if afterAttachMem != afterMultAttachDeatch {
-		t.Fatal("shm should still survive")
+	if afterDetachAlloc-startAlloc != size/(1<<12) {
+		t.Fatal("shm size mismatch")
 	}
 
 	err = s.Detach()
@@ -163,13 +197,16 @@ func TestSHM_Detach(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	isSHMClean(t, start)
+	isSHMClean(t, startCnt)
 }
 
 // Test kill all processes, none of these processes will call detach or remove.
 // Expect: not leak.
 func TestSHM_Kill(t *testing.T) {
-	start := getShm()
+	startCnt, _, err := getSHMStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	m := new(sync.Map)
 
@@ -191,15 +228,49 @@ func TestSHM_Kill(t *testing.T) {
 		return true
 	})
 
-	isSHMClean(t, start)
+	isSHMClean(t, startCnt)
 }
 
-func getShm() uint64 {
+func getSHMStatus() (cnt int, allocated int, err error) {
+	cmd := exec.Command("ipcs", "-m", "-u")
+	buf := make([]byte, 4096)
+	out := bytes.NewBuffer(buf)
+	cmd.Stdout = out
 
-	in := &syscall.Sysinfo_t{}
-	err := syscall.Sysinfo(in)
-	if err != nil {
-		return 0
+	r := bufio.NewReader(out)
+	for {
+		line, err2 := r.ReadSlice('\n')
+		if err2 != nil && err2 != io.EOF {
+			err = err2
+			break
+		}
+
+		if strings.HasPrefix("segments allocated", string(line)) {
+			s := strings.TrimPrefix(string(line), "segments allocated ")
+			s = strings.TrimSpace(s)
+			cnt, err = strconv.Atoi(s)
+			if err != nil {
+				return
+			}
+		}
+
+		if strings.HasPrefix("pages allocated", string(line)) {
+			s := strings.TrimPrefix(string(line), "pages allocated")
+			s = strings.TrimSpace(s)
+			allocated, err = strconv.Atoi(s)
+			if err != nil {
+				return
+			}
+		}
+
+		if err2 != nil {
+			err = err2
+			break
+		}
 	}
-	return in.Sharedram * uint64(in.Unit)
+
+	if err != io.EOF {
+		return 0, 0, err
+	}
+	return
 }
