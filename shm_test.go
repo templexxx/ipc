@@ -3,7 +3,6 @@ package ipc
 import (
 	"bufio"
 	"bytes"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -159,7 +158,7 @@ func TestSHM_Detach(t *testing.T) {
 	}
 
 	if afterAttachCnt-startCnt != 1 {
-		t.Fatal("new shm cnt mismatch")
+		t.Fatal("new shm cnt mismatch", afterAttachCnt, startCnt)
 	}
 
 	if afterAttachAlloc-startAlloc != size/(1<<12) {
@@ -232,22 +231,23 @@ func TestSHM_Kill(t *testing.T) {
 }
 
 func getSHMStatus() (cnt int, allocated int, err error) {
-	buf, err := exec.Command("ipcs", "-m", "-u").Output()
+	//defer fmt.Println(cnt, allocated)
+
+	output, err := exec.Command("ipcs", "-m", "-u").Output()
 	if err != nil {
 		return 0, 0, err
 	}
 
-	out := bytes.NewReader(buf)
-	r := bufio.NewReader(out)
-	for {
-		line, err2 := r.ReadSlice('\n')
-		if err2 != nil && err2 != io.EOF {
-			err = err2
-			break
+	out := bytes.NewBuffer(output)
+	r := bufio.NewScanner(out)
+	for r.Scan() {
+		text := r.Text()
+		if text == " " || len(text) == 0 {
+			continue
 		}
 
-		if strings.HasPrefix("segments allocated", string(line)) {
-			s := strings.TrimPrefix(string(line), "segments allocated ")
+		if strings.Contains(text, "segments") {
+			s := strings.TrimLeft(text, "segments allocated ")
 			s = strings.TrimSpace(s)
 			if s == "" {
 				break // No segments.
@@ -256,25 +256,17 @@ func getSHMStatus() (cnt int, allocated int, err error) {
 			if err != nil {
 				return
 			}
+			continue
 		}
 
-		if strings.HasPrefix("pages allocated", string(line)) {
-			s := strings.TrimPrefix(string(line), "pages allocated")
+		if strings.Contains(text, "pages allocated") {
+			s := strings.TrimLeft(text, "pages allocated ")
 			s = strings.TrimSpace(s)
 			allocated, err = strconv.Atoi(s)
 			if err != nil {
 				return
 			}
 		}
-
-		if err2 != nil {
-			err = err2
-			break
-		}
-	}
-
-	if err != io.EOF {
-		return 0, 0, err
 	}
 	return
 }
