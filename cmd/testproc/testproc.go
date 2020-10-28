@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"github.com/templexxx/ipc"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -93,6 +96,19 @@ func testSleep(key, size uint) error {
 	if err != nil {
 		return err
 	}
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+
+	var sig os.Signal
+	go func() {
+		sig = <-sc
+		os.Exit(0)
+	}()
 
 	time.Sleep(30 * time.Second)
 	return nil
