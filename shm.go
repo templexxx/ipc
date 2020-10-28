@@ -64,18 +64,30 @@ func (s *SHM) Attach() error {
 	return nil
 }
 
+var ErrRemoveOrder = errors.New("should detach before remove")
+
 // Remove removes the resource only after the last process detaches it.
 func (s *SHM) Remove() error {
+	if s.Data != 0 {
+		return ErrRemoveOrder
+	}
+	if s.ID == 0 { // Nothing to do.
+		return nil
+	}
 	_, _, err := syscall.Syscall(syscall.SYS_SHMCTL, s.ID, uintptr(IPC_RMID), 0)
 	return err
 }
 
 // Detach detaches shared memory.
 func (s *SHM) Detach() error {
+	if s.Data == 0 {
+		return nil
+	}
 	_, _, err := syscall.Syscall(syscall.SYS_SHMDT, s.Data, 0, 0)
 	if err != 0 {
 		return err
 	}
+	s.Data = 0
 	s.Bytes = nil
 	return nil
 }

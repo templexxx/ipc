@@ -3,7 +3,6 @@ package ipc
 import (
 	"bytes"
 	"log"
-	"math"
 	"os"
 	"os/exec"
 	"sync"
@@ -12,7 +11,15 @@ import (
 	"time"
 )
 
+func isSHMClean(t *testing.T, start uint64) {
+	if getShm()-start != 0 {
+		t.Fatal("shm leak")
+	}
+}
+
 func TestSameDataSingleProcess(t *testing.T) {
+	start := getShm()
+
 	s, err := SHMGet(1, 8)
 	if err != nil {
 		t.Fatal(err)
@@ -22,6 +29,7 @@ func TestSameDataSingleProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Detach()
+	defer s.Remove()
 
 	bs := s.Bytes
 	for i := 0; i < 8; i++ {
@@ -37,6 +45,9 @@ func TestSameDataSingleProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s2.Detach()
+	defer s2.Remove()
+
+	defer isSHMClean(t, start)
 
 	if s.ID != s2.ID {
 		t.Fatal("shm id mismatch")
@@ -69,6 +80,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestSameDataMultiProcesses(t *testing.T) {
+	start := getShm()
+
 	key := 1
 	size := 8
 	s, err := SHMGet(uint(key), uint(size))
@@ -80,6 +93,8 @@ func TestSameDataMultiProcesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Detach()
+	defer s.Remove()
+	defer isSHMClean(t, start)
 
 	bs := s.Bytes
 	for i := 0; i < size; i++ {
@@ -94,11 +109,14 @@ func TestSameDataMultiProcesses(t *testing.T) {
 	}
 }
 
+// Test multi-process attach same shm, one process will call detach and remove, others will only detach but not remove,
+// see the shm will leak or not.
+// Expect: not leak.
 func TestSHM_Detach(t *testing.T) {
 	key := 2
 	size := 1 << 30
 
-	startMem := getFreeMem()
+	start := getShm()
 	s, err := SHMGet(uint(key), uint(size))
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +133,7 @@ func TestSHM_Detach(t *testing.T) {
 		copy(s.Bytes[i*len(buf):(i+1)*len(buf)], buf)
 	}
 
-	afterAttachMem := getFreeMem()
+	afterAttachMem := getShm()
 
 	for i := 0; i < 8; i++ {
 		cmd := exec.Command("./testproc", "-cmd", "detach", "-key", "2", "-size", "1073741824")
@@ -125,28 +143,39 @@ func TestSHM_Detach(t *testing.T) {
 			log.Fatal(err)
 		}
 	}
-	afterMultAttachDeatch := getFreeMem()
+	afterMultAttachDeatch := getShm()
 	if !bytes.Equal(buf, s.Bytes[:len(buf)]) {
 		t.Fatal("data mismatch")
 	}
 
-	if startMem-afterAttachMem < 900*(1<<20) {
-		t.Fatal("memory usage not match after attach", startMem, afterAttachMem)
-	}
-	if startMem-afterMultAttachDeatch < 900*(1<<20) {
-		t.Fatal("memory usage should bigger: still has attach shm")
+	if afterAttachMem-start != 1<<30 {
+		t.Fatal("new shm size mismatch")
 	}
 
-	_ = s.Remove()
-	afterRm := getFreeMem()
-	if math.Abs(float64(startMem)-float64(afterRm)) > 256*(1<<20) {
-		t.Fatal("memory usage should be almost as same as the beginning")
+	if afterAttachMem != afterMultAttachDeatch {
+		t.Fatal("shm should still survive")
 	}
 
+	err = s.Detach()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = s.Detach()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = s.Remove()
+	if err != nil {
+		t.Fatal(err)
+	}
+	isSHMClean(t, start)
 }
 
+// Test kill all processes, none of these processes will call detach or remove.
+// Expect: not leak.
 func TestSHM_Kill(t *testing.T) {
-	startMem := getFreeMem()
+	start := getShm()
 
 	m := new(sync.Map)
 
@@ -168,19 +197,15 @@ func TestSHM_Kill(t *testing.T) {
 		return true
 	})
 
-	exitMem := getFreeMem()
-	if math.Abs(float64(startMem)-float64(exitMem)) > 256*(1<<20) {
-		t.Fatal("memory usage should be almost as same as the beginning")
-	}
+	isSHMClean(t, start)
 }
 
-func getFreeMem() uint64 {
+func getShm() uint64 {
 
 	in := &syscall.Sysinfo_t{}
 	err := syscall.Sysinfo(in)
 	if err != nil {
 		return 0
 	}
-	return in.Freeram * uint64(in.Unit)
-
+	return in.Sharedram * uint64(in.Unit)
 }
