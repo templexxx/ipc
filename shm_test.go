@@ -219,10 +219,6 @@ func TestSHM_Kill(t *testing.T) {
 				log.Fatal(err)
 			}
 			m.Store(j, cmd.ProcessState.Pid())
-			err = cmd.Wait()
-			if err != nil {
-				log.Fatal(err)
-			}
 		}(i)
 	}
 	time.Sleep(time.Second)
@@ -236,19 +232,12 @@ func TestSHM_Kill(t *testing.T) {
 }
 
 func getSHMStatus() (cnt int, allocated int, err error) {
-	cmd := exec.Command("ipcs", "-m", "-u")
-	buf := make([]byte, 0, 1024*1024)
-	out := bytes.NewBuffer(buf)
-	cmd.Stdout = out
-	err = cmd.Run()
-	if err != nil {
-		return 0, 0, err
-	}
-	err = cmd.Wait()
+	buf, err := exec.Command("ipcs", "-m", "-u").Output()
 	if err != nil {
 		return 0, 0, err
 	}
 
+	out := bytes.NewReader(buf)
 	r := bufio.NewReader(out)
 	for {
 		line, err2 := r.ReadSlice('\n')
