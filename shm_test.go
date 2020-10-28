@@ -8,8 +8,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -212,51 +210,30 @@ func TestSHM_Detach(t *testing.T) {
 	isSHMClean(t, startCnt)
 }
 
-// Test kill all processes, none of these processes will call detach or remove.
-// Expect: 1 leak.
-func TestSHM_Kill(t *testing.T) {
+// Test Exit all processes, none of these processes will call detach or remove.
+// Expect: 0 leak.
+func TestSHM_Exit(t *testing.T) {
 
 	startCnt, _, err := getSHMStatus()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer func() {
-		s, err := SHMGet(4, 1073741824)
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = s.Remove()
-		if err != nil {
-			t.Fatal(err)
-		}
-		isSHMClean(t, startCnt)
-	}()
-
-	m := new(sync.Map)
+	sleepSecs := 3
 
 	for i := 0; i < 8; i++ {
-		go func(j int) {
-			cmd := exec.Command("./testproc", "-cmd", "sleep", "-key", "4", "-size", "1073741824")
+		go func() {
+			cmd := exec.Command("./testproc", "-cmd", "sleep", "-key", "4", "-size", "1073741824", "-sleep", strconv.Itoa(int(sleepSecs)))
 			cmd.Stdout = os.Stdout
-			err := cmd.Start()
+			err := cmd.Run()
 			if err != nil {
 				log.Fatal(err)
 			}
-			m.Store(j, cmd.Process.Pid)
-		}(i)
+		}()
 	}
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * time.Duration(sleepSecs*2))
 
-	m.Range(func(key, value interface{}) bool {
-		err = syscall.Kill(value.(int), syscall.SIGKILL)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return true
-	})
-
-	isSHMLeakN(t, startCnt, 1)
+	isSHMClean(t, startCnt)
 
 }
 

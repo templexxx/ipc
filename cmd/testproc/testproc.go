@@ -6,15 +6,13 @@ import (
 	"fmt"
 	"github.com/templexxx/ipc"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 )
 
 var cmd = flag.String("cmd", "", "test cmd")
 var key = flag.Uint("key", 0, "shm key")
 var size = flag.Uint("size", 0, "shm size")
+var sleepSeconds = flag.Int64("sleep", 3, "sleep seconds")
 
 func init() {
 	flag.Usage = func() {
@@ -43,7 +41,7 @@ func main() {
 			log.Fatal(err)
 		}
 	case cmdSleep:
-		err := testSleep(*key, *size)
+		err := testSleep(*key, *size, *sleepSeconds)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -87,7 +85,7 @@ func testDetach(key, size uint) error {
 	return shm.Detach()
 }
 
-func testSleep(key, size uint) error {
+func testSleep(key, size uint, sleepSeconds int64) error {
 	shm, err := ipc.SHMGet(key, size)
 	if err != nil {
 		return err
@@ -97,20 +95,6 @@ func testSleep(key, size uint) error {
 		return err
 	}
 
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc,
-		syscall.SIGKILL,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-
-	var sig os.Signal
-	go func() {
-		sig = <-sc
-		os.Exit(0)
-	}()
-
-	time.Sleep(30 * time.Second)
+	time.Sleep(time.Duration(sleepSeconds) * time.Second)
 	return nil
 }
