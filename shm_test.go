@@ -213,13 +213,25 @@ func TestSHM_Detach(t *testing.T) {
 }
 
 // Test kill all processes, none of these processes will call detach or remove.
-// Expect: 0 leak.
+// Expect: 1 leak.
 func TestSHM_Kill(t *testing.T) {
 
 	startCnt, _, err := getSHMStatus()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		s, err := SHMGet(4, 1073741824)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = s.Remove()
+		if err != nil {
+			t.Fatal(err)
+		}
+		isSHMClean(t, startCnt)
+	}()
 
 	m := new(sync.Map)
 
@@ -237,11 +249,14 @@ func TestSHM_Kill(t *testing.T) {
 	time.Sleep(time.Second)
 
 	m.Range(func(key, value interface{}) bool {
-		syscall.Kill(value.(int), syscall.SIGKILL)
+		err = syscall.Kill(value.(int), syscall.SIGKILL)
+		if err != nil {
+			t.Fatal(err)
+		}
 		return true
 	})
 
-	isSHMClean(t, startCnt)
+	isSHMLeakN(t, startCnt, 1)
 
 }
 
