@@ -31,6 +31,7 @@ func TestSameDataSingleProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer isSHMClean(t, start)
 
 	s, err := SHMGet(1, 8192) // Using 8192 for avoiding get sys_info ignore too small size (because of the unit maybe KB?).
 	if err != nil {
@@ -56,7 +57,6 @@ func TestSameDataSingleProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer isSHMClean(t, start)
 
 	defer s2.Remove()
 	defer s2.Detach()
@@ -96,6 +96,7 @@ func TestSameDataMultiProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer isSHMClean(t, start)
 
 	key := 2
 	size := 8192
@@ -107,7 +108,6 @@ func TestSameDataMultiProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer isSHMClean(t, start)
 	defer s.Remove()
 	defer s.Detach()
 
