@@ -239,7 +239,7 @@ func TestSHM_Kill(t *testing.T) {
 		go func(j int) {
 			cmd := exec.Command("./testproc", "-cmd", "sleep", "-key", "4", "-size", "1073741824")
 			cmd.Stdout = os.Stdout
-			err := cmd.Run()
+			err := cmd.Start()
 			if err != nil {
 				log.Fatal(err)
 			}
