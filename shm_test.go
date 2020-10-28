@@ -56,9 +56,10 @@ func TestSameDataSingleProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer isSHMClean(t, start)
+
 	defer s2.Remove()
 	defer s2.Detach()
-	defer isSHMClean(t, start)
 
 	if s.ID != s2.ID {
 		t.Fatal("shm id mismatch")
@@ -106,9 +107,9 @@ func TestSameDataMultiProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer isSHMClean(t, start)
 	defer s.Remove()
 	defer s.Detach()
-	defer isSHMClean(t, start)
 
 	bs := s.Bytes
 	for i := 0; i < size; i++ {
