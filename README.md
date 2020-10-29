@@ -30,13 +30,24 @@ is full, kernel will try to swap, it may cause "swap insanity". When a process w
 need much memory, it works great.
 
 For shared memory, we may want processes which shared memory each other run on same node,
-we can use this command `numactl`
+we can use this ctl `numactl`
 
-e.g.: Runs program “myapp” on cpu 0, using memory on nodes 0 and 1.
+It's a useful ctl to control numa binds.
+
+e.g.: Run program “myapp” on cpu node 0, using memory on node 0.
+
 ```
-numactl --cpubind=0 --membind=0,1 myapp 
+numactl --cpunodebind=0 --membind=0 myapp 
+```
+
+e.g.: Run program "myapp" on physical cpu 0,1,2,3,4.
+
+```
+numactl --physcpubind=+0-4 myapp
 ```
 
 **Warning*:*
 
-Ensure your applications won't use too much memory.
+1. Ensure your applications won't use too much memory.
+
+2. If you want bind node after starting, please using cgroup.
