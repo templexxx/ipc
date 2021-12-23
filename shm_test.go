@@ -43,7 +43,7 @@ func TestSameDataSingleProcess(t *testing.T) {
 	}
 	defer isSHMClean(t, start)
 
-	s, err := SHMCreate(1, 8192) // Using 8192 for avoiding get sys_info ignore too small size (because of the unit maybe KB?).
+	s, err := SHMCreateWithKey(1, 8192) // Using 8192 for avoiding get sys_info ignore too small size (because of the unit maybe KB?).
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestSameDataSingleProcess(t *testing.T) {
 		bs[i] = uint8(i)
 	}
 
-	s2, err := SHMCreate(1, 8192)
+	s2, err := SHMGet(1, 8192)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestSameDataMultiProcesses(t *testing.T) {
 
 	key := 2
 	size := 8192
-	s, err := SHMCreate(uint(key), uint(size))
+	s, err := SHMCreateWithKey(uint(key), uint(size))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestSHM_Detach(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, err := SHMCreate(uint(key), uint(size))
+	s, err := SHMCreateWithKey(uint(key), uint(size))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestSHM_Exit(t *testing.T) {
 	}
 
 	defer func() {
-		s, err := SHMCreate(4, 1073741824)
+		s, err := SHMCreateWithKey(4, 1073741824)
 		if err != nil {
 			t.Fatal(err)
 		}

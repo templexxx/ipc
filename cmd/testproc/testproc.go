@@ -49,7 +49,7 @@ func main() {
 }
 
 func testGetSame(key, size uint) error {
-	shm, err := ipc.SHMGet(key, size)
+	shm, err := ipc.SHMCreateWithKey(key, size)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func testGetSame(key, size uint) error {
 }
 
 func testDetach(key, size uint) error {
-	shm, err := ipc.SHMGet(key, size)
+	shm, err := ipc.SHMCreateWithKey(key, size)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func testDetach(key, size uint) error {
 }
 
 func testSleep(key, size uint, sleepSeconds int64) error {
-	shm, err := ipc.SHMGet(key, size)
+	shm, err := ipc.SHMCreateWithKey(key, size)
 	if err != nil {
 		return err
 	}
