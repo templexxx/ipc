@@ -23,17 +23,21 @@ const (
 	IPC_RMID  = 0        // Remove resource.
 )
 
-// SHMCreate creates a shared memory with specified key (calculated by id & Ftok) and size.
+// SHMCreate creates a shared memory with key (calculated by id & Ftok) and size.
 func SHMCreate(id, size uint) (*SHM, error) {
 	key, errf := Ftok("/dev/null", id)
 	if errf != nil {
 		return nil, errf
 	}
 
+	return SHMCreateWithKey(key, size)
+}
+
+// SHMCreateWithKey creates a shared memory with specified key  and size.
+func SHMCreateWithKey(key, size uint) (*SHM, error) {
+
 	shmid, _, err := syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), IPC_CREAT|0666)
-	if err != 0 {
-		return nil, err
-	}
+
 	if int(shmid) == -1 {
 		return nil, errors.New(fmt.Sprintf("shm create failed: %s", err))
 	}
@@ -49,9 +53,7 @@ func SHMCreate(id, size uint) (*SHM, error) {
 func SHMGet(key, size uint) (*SHM, error) {
 
 	shmid, _, err := syscall.Syscall(syscall.SYS_SHMGET, uintptr(key), uintptr(size), 0666)
-	if err != 0 {
-		return nil, err
-	}
+
 	if int(shmid) == -1 {
 		return nil, errors.New(fmt.Sprintf("shm get failed: %s", err))
 	}
